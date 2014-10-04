@@ -1,0 +1,682 @@
+﻿	<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+	<meta name="viewport" content=" width=555, initial-scale=0.55, target-desitydpi=160,minimal-ui">
+	
+	<title>PwnerGame</title>
+	<link href="css/main.css" rel="stylesheet" type="text/css">
+	
+  <script src='js/jquery.js'></script>
+  <script src='js/jquery-ui.min.js'></script>
+  <script src='js/snap.svg-min.js'></script>
+  
+<div id='wx_pic' style='margin:0 auto;display:none;'>
+<img src='pwner.png' />
+</div>
+
+	<script>
+		var GameData={
+			Multilanguage:{
+				"zh":{
+					"startGame": "开始游戏",
+					"highScore": "高分榜",
+					"shortDescription": "给你个锁屏图案，你来原样画出来！顶部的时间条充满后才能开始画，关数越高越有挑战！",
+					"getBack":"返回",
+					"getBackHS":"返回",
+					"ggText":"游戏结束",
+					"timeup":"时间耗尽了",
+					"highScoreText":"高分榜",
+					"plzShare":"喜欢的话别忘了分享给朋友哦！"
+				},
+				
+				"en":{
+					"startGame": "Start",
+					"highScore": "High Score",
+					"highScoreText":"High Score",
+					"shortDescription":"Draw the pattern before time up! You can't start drawing until time bar on the top is filled! Good Luck!",
+					"getBack":"Return",
+					"getBackHS":"Return",
+					"ggText":"GameOver",
+					"timeup":"you have reached time limit...",
+					"plzShare":"If U like it, share it!~"
+				},
+			},
+			hsShow:{
+				"zh":"您已进入高分榜，请留下尊姓大名：",
+				"en":"You beat the Highscore, enter your name please:"
+			},
+			descTxt:{
+				"zh":function(){
+					if (GameData.myHS==0)
+						return "来看看你能解锁多少部手机？";
+					else
+						return "我解锁了"+GameData.myHS+"部手机！";
+				},
+				"en":function(){
+					if (GameData.myHS==0)
+						return "Come Play Unlocking Phone Game!";
+					else
+						return "I unlocked "+GameData.myHS+" phones！";
+				}
+			},
+			wrong:{
+				"zh":function(){
+					if (GameData.DrawnPwd.slice(0).sort().join()==GameData.ExpectedPwd.slice(0).sort().join())
+						return "你画错了图案（什么？你觉得你画对了？顺序也要画正确啊！）";
+					var i=0;
+					while(true){
+						if (GameData.DrawnPwd[i]==GameData.ExpectedPwd[i]){
+							++i; continue;
+						}
+						if (GameData.DrawnPwd.length==i)
+							return "你少画了圈";
+						if (GameData.ExpectedPwd.length==i)
+							return "你多画了圈";
+						return "你画错了图案，从第"+(i+1)+"个圈起就画错了";
+					}
+				},
+				"en":function(){
+					if (GameData.DrawnPwd.slice(0).sort().join()==GameData.ExpectedPwd.slice(0).sort().join())
+						return "You draw a wrong pattern(What? You think you're right? You didn't draw the right sequence!)";
+					var i=0;
+					while(true){
+						if (GameData.DrawnPwd[i]==GameData.ExpectedPwd[i]){
+							++i; continue;
+						}
+						if (GameData.DrawnPwd.length==i)
+							return "You missed a circle.";
+						if (GameData.ExpectedPwd.length==i)
+							return "You draw excessive circle.";
+						return "You have draw wrong pattern from the "+(i+1)+(i==1?"st":i==2?"nd":"th")+" circle.";
+					}
+				}
+			},
+			menu:true,
+			levelTxt:{
+				"zh":function(){
+					return "你闯到了第<b>"+(GameData.Level)+"</b>关，但是...";
+				},
+				
+				"en":function(){
+					return "You have reached <b>Level "+(GameData.Level)+"</b>, but...";
+				}
+			},
+			Icons:{
+				RatingIcon:{"OK":"&#59392;","Bad":"&#59395;","Soso":"&#59396"},
+				EnergyIcon:"&#59393;",
+				HelpIcon:"&#59394;"
+			},
+			IncludeMat:[
+				[-1,-1, 1,-1,-1,-1, 3,-1, 4],
+				[-1,-1,-1,-1,-1,-1,-1, 4,-1],
+				[ 1,-1,-1,-1,-1,-1, 4,-1, 5],
+				[-1,-1,-1,-1,-1, 4,-1,-1,-1],
+				[-1,-1,-1,-1,-1,-1,-1,-1,-1],
+				[-1,-1,-1, 4,-1,-1,-1,-1,-1],
+				[ 3,-1, 4,-1,-1,-1,-1,-1, 7],
+				[-1, 4,-1,-1,-1,-1,-1,-1,-1],
+				[ 4,-1, 5,-1,-1,-1, 7,-1,-1]
+			],
+			Parameters:{
+				lockCircleMargin:80,
+				lockCircleDist:170,
+				lockCircleTriggerRadius:50,
+				lineDuration:200,
+				clearDuration:300,
+				circDuration:300,
+				drainSpeed:300,
+				minimalSpeed:200,
+				GGDuration:2000,
+				StartDuration:500
+			},
+			svg:"GameSVG",
+			SVGComponents:{
+				lockCGroups:undefined,
+				lockCircles:[],
+				lines:[],
+				curline:undefined,
+			},
+			Styles:{
+				progressionFull:{
+					backgroundColor:"#33ff24",
+					width:"100%"
+				},
+				progressionEmpty:{
+					backgroundColor:"#ff0000",
+					width:"0%"
+				},
+				normalLockCircle:{
+					stroke:"#888888",
+					strokeWidth: 3,
+					fill:"#f5fff3",
+					r:10
+				},
+				activeLockCircle:{
+					stroke:"#1188FF",
+					strokeWidth: 5,
+					fill:"#BBEEFF",
+					r:50
+				},
+				normallineStyle:{
+					stroke:"#1188FF",
+					strokeWidth: 15,
+					strokeOpacity:0.8,
+					strokeLinecap: "round"
+				},
+				triggerStyle:{
+					stroke:"#D8C3DB",
+					strokeWidth: 2,
+					fill:"#f8f1f2"
+				},
+				badLockCircle:{
+					stroke:"red",
+					strokeWidth: 5,
+					fill:"#ff96a3",
+					r:50
+				}
+			},
+			eventHandler:{
+				Down:undefined,
+				Up:undefined,
+				Move:undefined
+			},
+			Pivot:undefined,
+			DrawnPwd:[],
+			ExpectedPwd:[],
+			Level:-1,
+			myHS:0,
+			Progression:0
+		};
+		function doMove(e){
+			if (GameData.eventHandler.Move)
+				GameData.eventHandler.Move.call(this,e);
+		}
+		function doDown(e){
+			e.preventDefault();
+			if (GameData.eventHandler.Down)
+			GameData.eventHandler.Down.call(this,e);
+		}
+		function doUp(e){
+			if (GameData.eventHandler.Up)
+				GameData.eventHandler.Up.call(this,e);
+		}
+		
+	</script>
+	<script>
+		//Utilities:
+		var XYUtil={offsetX:0,offsetY:0};
+		$(function(){
+			var offset=$("#gameSVG").offset();
+			XYUtil.offsetX=offset.left;
+			XYUtil.offsetY=offset.top;
+		});
+		function getXY(e){
+			if (e.clientX)
+				return {X:e.clientX-XYUtil.offsetX,Y:e.clientY-XYUtil.offsetY};
+			else
+				return {
+					X:e.originalEvent.targetTouches[0].pageX-XYUtil.offsetX,
+					Y:e.originalEvent.targetTouches[0].pageY-XYUtil.offsetY
+				}
+		}
+	</script>
+	<script>
+	var k=0;
+	
+	function edgeUp(e){
+		if (GameData.DrawnPwd.join()==GameData.ExpectedPwd.join())
+			levelPass();
+		else{
+			levelFailed("wrong");
+		}
+	}
+	
+	function edgeMove(e){ //Activate a circ.
+		var xy=getXY(e);
+		GameData.SVGComponents.curline.attr({
+			x2:xy.X,
+			y2:xy.Y
+		});
+		
+		for (var i=0; i<3; ++i)
+			for (var j=0; j<3; ++j)
+				if (Math.sqrt((xy.X-getMargined(i))*(xy.X-getMargined(i))+(xy.Y-getMargined(j))*(xy.Y-getMargined(j)))<=GameData.Parameters.lockCircleTriggerRadius){
+					var seq=i+j*3;
+					if (GameData.DrawnPwd.indexOf(seq)!=-1) return;
+					
+					var jmper=GameData.IncludeMat[GameData.Pivot][seq];
+					if (jmper!=-1 && GameData.DrawnPwd.indexOf(jmper)==-1){
+						GameData.DrawnPwd.push(jmper);
+						activateCirc(GameData.SVGComponents.lockCircles[jmper]);
+					}
+					activateCirc(GameData.SVGComponents.lockCircles[seq]);
+					
+					GameData.SVGComponents.curline.attr({
+						x2:getMargined(i),
+						y2:getMargined(j)
+					});
+					GameData.SVGComponents.lines.push(GameData.SVGComponents.curline);
+					newLine(getMargined(i),getMargined(j),xy.X,xy.Y);
+					
+					GameData.DrawnPwd.push(seq);
+					GameData.Pivot=seq;
+					return;
+				}
+	}
+	
+	function edgeDown(e){
+		var xy=getXY(e);
+		for (var i=0; i<3; ++i)
+			for (var j=0; j<3; ++j)
+				if (Math.sqrt((xy.X-getMargined(i))*(xy.X-getMargined(i))+(xy.Y-getMargined(j))*(xy.Y-getMargined(j)))<=GameData.Parameters.lockCircleTriggerRadius){
+					GameData.eventHandler.Down=undefined;
+					GameData.eventHandler.Move=edgeMove;
+					GameData.eventHandler.Up=edgeUp;
+					var seq=i+j*3;
+					GameData.DrawnPwd.push(seq)
+					GameData.Pivot=seq;
+					newLine(getMargined(i),getMargined(j),xy.X,xy.Y);
+					activateCirc(GameData.SVGComponents.lockCircles[seq]);
+				};
+	}
+	
+	function activateCirc(e,fun){
+		e.attr({
+			r:"+=80"
+		})
+		e.animate(
+			GameData.Styles.activeLockCircle,
+			300,
+			mina.bounce,
+			fun
+		);
+	}
+	function animateLine(l,x,y,fun){
+		l.animate({
+				x2:x,
+				y2:y,
+			},
+			200,
+			mina.linear,
+			fun
+		);
+	}
+	function genPWD(len){
+		var cur=parseInt(Math.random()*9);
+		var pwd=[cur];
+		for(var i=1; i<len; ++i){
+			var tmp;
+			while (true){
+				tmp=parseInt(Math.random()*9);
+				if (pwd.indexOf(tmp)==-1) break;
+			}
+			var jmper=GameData.IncludeMat[cur][tmp];
+			if (pwd.indexOf(jmper)==-1 && jmper!=-1) 
+				pwd.push(jmper);
+			pwd.push(tmp);
+			cur=tmp;
+			if (pwd.length==9) return pwd;
+		}
+		return pwd;
+	}
+	
+	function userRound(){
+		GameData.eventHandler.Down=edgeDown;		
+	}
+	
+	function animatePWD(pwd){
+		var i=0;
+		$("#levelText")
+			.text("Level "+GameData.Level)
+			.css({left:0})
+			.animate({left:($("#levelTextContainer").width()-$("#levelText").width())/2},GameData.Parameters.clearDuration,"easeOutElastic");
+		var chainedFun=function (){
+			if (i==pwd.length) return;
+			activateCirc(GameData.SVGComponents.lockCircles[pwd[i]],i+1==pwd.length?function(){
+				$("#levelTextReady")
+				clearSVG();
+				userRound();
+			}:undefined);
+			if (i+1!=pwd.length){
+				newLine(getMargined(pwd[i]%3),getMargined(parseInt(pwd[i]/3)),getMargined(pwd[i]%3),getMargined(parseInt(pwd[i]/3)));
+				animateLine(GameData.SVGComponents.curline,getMargined(pwd[i+1]%3),getMargined(parseInt(pwd[i+1]/3)),chainedFun);
+			}
+			i++;
+		}
+		chainedFun();
+	}
+	
+	function getMargined(v){
+		var m=GameData.Parameters.lockCircleMargin,
+			r=GameData.Parameters.lockCircleDist;
+		return m+(v)*r;
+	}
+	
+	function clearSVG(fun){
+		var ls=GameData.SVGComponents.lines;
+		for (var i=0; i<ls.length; ++i){
+			var iL=ls[i];
+			iL.animate({
+				opacity:0
+			},GameData.Parameters.clearDuration,mina.linear,function(x){ return function(){
+				x.remove()
+			}}(iL));
+		}
+		var cL=GameData.SVGComponents.curline;
+		if (cL) cL.animate({
+			opacity:0
+		},GameData.Parameters.clearDuration,mina.linear,function(){cL.remove()});
+		
+		var cs=GameData.SVGComponents.lockCircles;
+		for (var i=0; i<cs.length; ++i){
+			var inAnim=cs[i].inAnim();
+			if (inAnim.length>0)
+				inAnim[0].stop();
+			cs[i].animate(GameData.Styles.normalLockCircle,GameData.Parameters.clearDuration,mina.bounce);
+		};
+		
+		if (fun) setTimeout(fun, GameData.Parameters.clearDuration);
+	}
+	
+	function newLine(a,b,c,d){
+		GameData.SVGComponents.lines.push(
+			GameData.SVGComponents.curline=GameData.svg.line(a,b,c,d)
+		);
+		GameData.SVGComponents.curline.attr(GameData.Styles.normallineStyle);
+		
+	}
+	
+	function gameClear(){
+		GameData.DrawnPwd=[];
+		GameData.eventHandler.Down=undefined;
+		GameData.eventHandler.Up=undefined;
+		GameData.eventHandler.Move=undefined;
+		
+	};
+	
+	function startGame(){
+		if (!GameData.menu) return;
+		GameData.menu=false;
+		$("#progression").css({width:0,opacity:1});
+		GameData.Level=1;
+		$("#mainMenu").animate({left:-500,marginLeft:0},GameData.Parameters.StartDuration);
+		$("#gameContainer")
+			.show()
+			.css({top:-1000})
+			.animate(
+				{top:0},
+				GameData.Parameters.StartDuration,
+				"linear",
+				function(){
+					startLevel(1);
+				});
+	}
+	
+	function fillTimer(time){
+		$(progression).animate(
+			GameData.Styles.progressionFull,
+			time,
+			"linear",
+			drainTime
+		);
+	}
+	function drainTime(){
+		var sin=Math.sin, pi=Math.PI, p=Math.pow, x=GameData.Level;
+		var pertime=sin(-sin(pi*(0.5-p(1.031,x))*pi/2)+1)*
+			GameData.Parameters.drainSpeed+GameData.Parameters.minimalSpeed
+		$(progression).animate(
+			GameData.Styles.progressionEmpty,
+			pertime*GameData.ExpectedPwd.length,
+			"linear",
+			function(){levelFailed("timeup");}
+		);
+		
+	}
+	
+	function startLevel(n){
+		gameClear();
+		clearSVG(function(){
+			var nPwd=Math.log(n*3)*1.3+1;
+			var pwd=genPWD(nPwd);
+			GameData.ExpectedPwd=pwd;
+			fillTimer((pwd.length-1)*GameData.Parameters.lineDuration+GameData.Parameters.circDuration+GameData.Parameters.clearDuration);
+			animatePWD(pwd);
+		});
+	}
+	
+	function levelPass(){
+		$(progression).stop();
+		GameData.Level+=1;
+		startLevel(GameData.Level);
+	}
+	
+	function levelFailed(why){
+		$(progression).stop();
+		if (GameData.Level>GameData.myHS){ 
+			GameData.myHS=GameData.Level;
+			document.title="PwnerGame "+getDesc();
+		}
+		$.ajax({
+			url:"statistics.php?score="+GameData.Level,
+			success:function(data){
+				if (data=="OK") return;
+				eval("r="+data);
+				var x=null;
+				for(var i in GameData.wrong){
+					if (navigator.language.toLowerCase().indexOf(i)!=-1){
+						x=prompt(GameData.hsShow[i]);
+						break;
+					}
+				}
+				if (x==null) return;
+				$.ajax({url:"hs.php?id="+r.id+"&sec="+r.sec+"&n="+x,
+				success:function(data){
+					GameData.inHS=true;
+				}});
+			}
+		});
+		if (why=="wrong"){
+			var ls=GameData.SVGComponents.lines;
+			for (var i=0; i<ls.length; ++i){
+				var iL=ls[i];
+				iL.attr({stroke:"red"});
+			}
+			var cL=GameData.SVGComponents.curline;
+			if (cL) cL.remove();
+			var cs=GameData.SVGComponents.lockCircles;
+			var dcs=GameData.DrawnPwd;
+			for (var i=0; i<dcs.length; ++i){
+				var inAnim=cs[dcs[i]].inAnim();
+				if (inAnim.length>0)
+					inAnim[0].stop();
+				cs[dcs[i]].attr(GameData.Styles.badLockCircle);
+			}
+			for(var i in GameData.wrong)
+				if (navigator.language.toLowerCase().indexOf(i)!=-1){
+					$("#deathReason").html(GameData.levelTxt[i]()+GameData.wrong[i]())
+					break;
+				}
+			gameClear();
+			setTimeout(gameover,500);
+		}else if (why=="timeup"){
+			for(var i in GameData.wrong) //just patch...
+				if (navigator.language.toLowerCase().indexOf(i)!=-1){
+					$("#deathReason").html(GameData.levelTxt[i]()+GameData.Multilanguage[i].timeup)
+					break;
+				}
+			gameClear();
+			gameover();
+		}
+	}
+	
+	function gameover(){
+		$("#failShow")
+			.show()
+			.css("left",$(window).width())
+			.animate({"left":-500},GameData.Parameters.GGDuration,"linear",function(){
+			$("#ggMenu").show();
+			$("#gameContainer").hide();
+			clearSVG();
+		});
+	}
+	
+	function formatLang(){
+		for(var l in GameData.Multilanguage){
+			if (navigator.language.toLowerCase().indexOf(l)!=-1){
+				var lPack=GameData.Multilanguage[l];
+				for (var str in lPack)
+					$("#"+str).text(lPack[str]);
+				break;
+			}
+		}
+	}
+	function showHighScore(){
+		if (!GameData.menu) return;
+		GameData.menu=false;
+		$.ajax({url:"showHs.php", success:function(data){
+			eval("tmp="+data);
+			var tArr=[];
+			for (var i=0; i<tmp.length; ++i){
+				tArr.push("<div>");
+				tArr.push(tmp[i].name);
+				tArr.push("<span style='float:right'>"+tmp[i].Score+"</span>");
+				tArr.push("</div>");
+			}
+			$("#hSTxt").html(tArr.join(""));
+		}})
+		$("#mainMenu").css({left:0,"margin-left":"auto"});
+		$("#highScoreMenu").show().css({top:-800}).animate({top:0},GameData.Parameters.StartDuration,"linear");
+	}
+	function getBack(){
+		$("#mainMenu").css({left:0,"margin-left":"auto"});
+		$("#ggMenu").animate({top:-800},GameData.Parameters.StartDuration,"linear",function(){
+			$("#ggMenu").css("top",0).hide()
+			GameData.menu=true;
+		});
+	}
+	function getBackHS(){
+		$("#mainMenu").css({left:0,"margin-left":"auto"});
+		$("#highScoreMenu").animate({top:-800},GameData.Parameters.StartDuration,"linear",function(){
+			$("#highScoreMenu").css("top",0).hide()
+			GameData.menu=true;
+		});
+	}
+	function getDesc(){
+		for(var i in GameData.wrong) //just patch...
+			if (navigator.language.toLowerCase().indexOf(i)!=-1){
+				return GameData.descTxt[i]();
+			}
+	}
+	
+	$(function(){
+		//Initialize
+		GameData.svg=Snap("#gameSVG");
+		var svg=GameData.svg;
+		
+		var ls=GameData.SVGComponents.lockCircles;
+		for (var j=0; j<3; ++j)
+			for (var i=0; i<3; ++i){
+				svg
+					.circle(getMargined(i),getMargined(j),GameData.Parameters.lockCircleTriggerRadius)
+					.attr(GameData.Styles.triggerStyle);
+				ls.push(svg
+					.circle(getMargined(i),getMargined(j),0)
+					.attr(GameData.Styles.normalLockCircle)
+				);
+			}
+		svg
+			.mousedown(doDown)
+			.touchstart(doDown)
+			//.mouseup(doUp)
+			//.touchend(doUp)
+			.mousemove(doMove)
+			.touchmove(doMove);
+		document.onmouseup=doUp;
+		$(document).on("touchend",doUp);
+		
+		GameData.SVGComponents.lockCGroups=svg.g().add(ls);
+		GameData.SVGComponents.lockCGroups.attr(GameData.Styles.normalLockCircle);
+		GameData.progression=$("#progression");
+
+		//$("#page").bind("touchmove",function(e){e.preventDefault()});
+		//$("#page").bind("touchstart",function(e){e.preventDefault()});
+		//$("#page").bind("touchend",function(e){e.preventDefault()});
+		$("#startGame").bind("touchend",startGame);
+		$("#startGame").click(startGame);
+		$("#getBack").bind("touchend",getBack);
+		$("#getBack").click(getBack);
+		$("#getBackHS").click(getBackHS);
+		$("#getBackHS").bind("touchend",getBackHS);
+		$("#highScore").click(showHighScore);
+		$("#highScore").bind("touchend",showHighScore);
+		formatLang();
+		
+		GameData.menu=true;
+		
+		$("#ggMenu").hide();
+		$("#gameContainer").hide();
+		$("#highScoreMenu").hide();
+		//startGame();
+	});
+	
+	function jmp(){
+		if (!GameData.menu) e.preventDefault();
+		window.location="http://weibo.com/artheru";
+	}
+	</script>
+</head>
+<body style="margin:0px">
+<div id="page">
+	<div id="gameContainer">
+		<div id="levelN"></div>
+		<div id="gameStatusBar">
+			<div id="timerBar"><div id="progression"></div><span id="timerBarText"></span></div>
+		</div>
+		<svg id="gameSVG"> 
+		</svg>
+		<div id="levelTextContainer">
+			<span id="levelText" class="levelTxt">Ready...</span>
+		</div>
+	</div>
+	
+	<div id="mainMenu" class="gameMenu">
+		<div class="gameTitle">PWNER</div>
+		<div class="menuContainer">
+			<div id="shortDescription" class="menuHeader"></div>
+			<div class="button" id="startGame"></div>
+			<div class="button" id="highScore"></div>
+			<div class="menuHeader"><br/>Designed by <a style="color:silver" onclick="jmp()">Artheru!</a></div>
+			<div id="plzShare" class="menuHeader"></div>
+		</div>
+		
+		<div class="bdsharebuttonbox" style="float:right"><a href="#" class="bds_more" data-cmd="more"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_tqq" data-cmd="tqq" title="分享到腾讯微博"></a><a href="#" class="bds_renren" data-cmd="renren" title="分享到人人网"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a></div>
+<script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"32","onBeforeClick":function(cmd,cfg){
+	cfg.bdDesc=getDesc();
+	return cfg;
+},
+},"share":{},"image":{"viewList":["tsina","tqq","renren","weixin"],"viewText":"分享到：","viewSize":"16"}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
+
+
+	</div>
+	
+	<div id="ggMenu" class="gameMenu">
+		<div class="gameTitle" id="ggText"></div>
+		<div class="menuContainer">
+			<div id="deathReason" class="menuHeader"></div>
+			<div class="button" id="getBack"></div>
+		</div>
+	</div>
+	
+	<div id="highScoreMenu" class="gameMenu">
+		<div class="gameTitle" id="highScoreText"></div>
+		<div class="menuContainer">
+			<div id="hSTxt" class="menuHeader"></div>
+			<div class="button" id="getBackHS"></div>
+		</div>
+	</div>
+	
+	<div id="failShow" style="font-family:'maxwell'; font-size:200px;border:20px solid; border-radius:60px; padding:10px 20px 0px 20px;color:red;background-color:#eeffa3;width:420px;top:180px;display:none;position:absolute">&#59395;</div>
+</div>
+</body>
+</html>

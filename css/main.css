@@ -1,0 +1,147 @@
+@font-face {
+  font-family: 'maxwell';
+  src: url('../font/maxwell.eot?63984503');
+  src: url('../font/maxwell.eot?63984503#iefix') format('embedded-opentype'),
+       url('../font/maxwell.woff?63984503') format('woff'),
+       url('../font/maxwell.ttf?63984503') format('truetype'),
+       url('../font/maxwell.svg?63984503#maxwell') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+/* Chrome hack: SVG is rendered more smooth in Windozze. 100% magic, uncomment if you need it. */
+/* Note, that will break hinting! In other OS-es font will be not as sharp as it could be */
+/*
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: 'maxwell';
+    src: url('../font/maxwell.svg?63984503#maxwell') format('svg');
+  }
+}
+*/
+ 
+ [class^="icon-"]:before, [class*=" icon-"]:before {
+  font-family: "maxwell";
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+ 
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  text-align: center;
+  /* opacity: .8; */
+ 
+  /* For safety - reset parent styles, that can break glyph codes*/
+  font-variant: normal;
+  text-transform: none;
+     
+  /* fix buttons height, for twitter bootstrap */
+  line-height: 1em;
+ 
+  /* Animation center compensation - margins should be symmetric */
+  /* remove if not needed */
+  margin-left: .2em;
+ 
+  /* you can be more comfortable with increased icons size */
+  /* font-size: 120%; */
+ 
+  /* Uncomment for 3D effect */
+  /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+}
+ 
+.icon-emo-devil:before { content: '\e800'; } /* '' */
+.icon-crown:before { content: '\e801'; } /* '' */
+.icon-help-circled:before { content: '\e802'; } /* '' */
+.icon-emo-surprised:before { content: '\e803'; } /* '' */
+.icon-emo-tongue:before { content: '\e804'; } /* '' */
+body{
+	overflow:hidden;
+}
+#page{
+	overflow:hidden;
+}
+
+#timerBar{
+	border-radius:10px;
+	height:20px;
+	width:498px;
+	margin:20px 0px;
+	overflow:hidden;
+	background-color:#eefff3;
+	border: 1px solid #61db99;
+}
+#gameSVG{
+	width:500px;
+	height:500px;
+	background-color:#deffec;
+	border-radius:60px;
+}
+.gameMenu{
+	position:absolute;
+	width:500px;
+	margin-left: auto;
+	margin-right: auto;
+	left: 0;
+	right: 0;
+}
+.menuContainer{
+	border-radius:0px 0px 40px 40px;
+	height:500px;
+	padding:0px 0px 30px 0px;
+	background-color:rgb(0,0,0);
+}
+.button{
+	margin: 20px;
+	border-radius:20px;
+	padding:20px 30px 15px 30px;
+	background-color:rgb(255,255,255);
+	cursor:pointer;
+	font-size:40px;
+	font-family:Courier, 幼圆;
+}
+.gameTitle{
+	text-align:center;
+	font-size:90px;
+	font-family:Courier, 幼圆;
+	font-weight:900;
+	padding-top:20px;
+	margin:50px auto 0px auto;
+	background-color:rgb(193,226,242);
+	border-radius: 40px 40px 0px 0px;
+}
+.menuHeader{
+	padding:20px 30px 0px 30px;
+	font-size:30px;
+	color:white;
+	font-family:Courier, 幼圆;
+}
+#progression{
+	width:0%;
+	height:100%;
+}
+#gameContainer{
+	position:absolute;
+	width:502px;
+	margin-left: auto;
+	margin-right: auto;
+	left: 0;
+	right: 0;
+}
+.levelTxt{
+	position:absolute;
+	top:30px;
+	left:20px;
+	font-family:courier, 幼圆;
+	font-size:50px;
+	margin:0 auto;
+}
+#levelTextContainer{
+	position:relative;
+	width:100%;
+	height:100px;
+	margin:20px 0px;
+	background-color:#61db99;
+	overflow:hidden;
+	border-radius:20px;
+}
